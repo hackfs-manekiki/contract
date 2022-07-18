@@ -12,8 +12,6 @@ async function main() {
         weight: 1
     }]
     const contract = await factory.deploy(weights, 1)
-    const hash = await contract.hashTransfer(wallet.address, ethers.utils.parseUnits('0.5', 'ether'), 1)
-    console.log(`hash from contract: ${hash}`)
     // TRANSFER(address payable to,uint256 amount,uint256 nounce)
     const EIP721_DOMAIN_TYPE = {
         EIP712Domain: [
@@ -30,45 +28,20 @@ async function main() {
             { type: 'uint256', name: 'nonce' }
         ]
     }
-    console.log(await wallet.getChainId())
-    console.log(ethers.utils._TypedDataEncoder.hashStruct('EIP712Domain', EIP721_DOMAIN_TYPE, {
-        name: 'ManekiVault',
-        version: '1.0.0',
-        chainId: await wallet.getChainId(),
-        verifyingContract: contract.address
-    }))
-    console.log(ethers.utils._TypedDataEncoder.hashDomain({
-        name: 'ManekiVault',
-        version: '1.0.0',
-        chainId: await wallet.getChainId(),
-        verifyingContract: contract.address
-    }))
-    const domain = await contract.domainSeparatorV4()
-    console.log(domain)
 
-    console.log(ethers.utils._TypedDataEncoder.hashStruct('TRANSFER', EIP721_TRANSFER_TYPE, {
-        to: wallet.address,
-        amount: ethers.utils.parseUnits('0.5', 'ether').toString(),
-        nonce: 1
-    }))
-    const dataHash = await contract.getHash(wallet.address, ethers.utils.parseUnits('0.5', 'ether').toString(), 1)
-    await console.log(dataHash)
-    console.log(ethers.utils.keccak256(ethers.utils.hexConcat([
-        '0x1901',
-        domain,
-        dataHash
-    ])))
-    const hash2 = ethers.utils._TypedDataEncoder.hash({
+    const domain = {
         name: 'ManekiVault',
         version: '1.0.0',
         chainId: await wallet.getChainId(),
         verifyingContract: contract.address
-    }, EIP721_TRANSFER_TYPE, {
+    }
+    const transferObj = {
         to: wallet.address,
         amount: ethers.utils.parseUnits('0.5', 'ether').toString(),
         nonce: 1
-    })
-    console.log(`hash from ethers: ${hash2}`)
+    }
+    const hash = ethers.utils._TypedDataEncoder.hash(domain, EIP721_TRANSFER_TYPE, transferObj)
+
     const signature = await wallet._signTypedData({
         name: 'ManekiVault',
         version: '1.0.0',
@@ -79,7 +52,7 @@ async function main() {
         amount: ethers.utils.parseUnits('0.5', 'ether').toString(),
         nonce: 1
     })
-    console.log(await contract.checkSignature(wallet.address, hash2, signature))
+    console.log(await contract.checkSignature(wallet.address, hash, signature))
 }
 
 main()
