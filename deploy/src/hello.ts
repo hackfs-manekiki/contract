@@ -7,52 +7,16 @@ async function main() {
     const provider = ethers.providers.getDefaultProvider('http://localhost:8545')
     const wallet = new ethers.Wallet(privateKey, provider)
     const factory = new ethers.ContractFactory(VaultArtifact.abi, VaultArtifact.bytecode.object, wallet)
-    const weights: any[] = [{
-        owner: '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266',
-        weight: 1
-    }]
-    const contract = await factory.deploy(weights, 1)
-    // TRANSFER(address payable to,uint256 amount,uint256 nounce)
-    const EIP721_DOMAIN_TYPE = {
-        EIP712Domain: [
-            { name: "name", type: "string" },
-            { name: "version", type: "string" },
-            { name: "chainId", type: "uint256" },
-            { name: "verifyingContract", type: "address" },
-        ]
-    }
-    const EIP721_TRANSFER_TYPE = {
-        TRANSFER: [
-            { type: "address", name: 'to' },
-            { type: 'uint256', name: 'amount' },
-            { type: 'uint256', name: 'nonce' }
-        ]
-    }
-
-    const domain = {
-        name: 'ManekiVault',
-        version: '1.0.0',
-        chainId: await wallet.getChainId(),
-        verifyingContract: contract.address
-    }
-    const transferObj = {
-        to: wallet.address,
-        amount: ethers.utils.parseUnits('0.5', 'ether').toString(),
-        nonce: 1
-    }
-    const hash = ethers.utils._TypedDataEncoder.hash(domain, EIP721_TRANSFER_TYPE, transferObj)
-
-    const signature = await wallet._signTypedData({
-        name: 'ManekiVault',
-        version: '1.0.0',
-        chainId: await wallet.getChainId(),
-        verifyingContract: contract.address
-    }, EIP721_TRANSFER_TYPE, {
-        to: wallet.address,
-        amount: ethers.utils.parseUnits('0.5', 'ether').toString(),
-        nonce: 1
-    })
-    console.log(await contract.checkSignature(wallet.address, hash, signature))
+    const vault = await factory.deploy(
+        wallet.address,
+        ['0x70997970c51812dc3a010c7d01b50e0d17dc79c8', '0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc'],
+        [
+            {
+                approver: '0x90f79bf6eb2c4f870365e785982e1f101e93b906',
+                budget: '1000000000'
+            }
+        ])
+    console.log(vault.address)
 }
 
 main()
