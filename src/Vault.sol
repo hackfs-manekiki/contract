@@ -32,12 +32,22 @@ contract Vault is IVault, Ownable {
         }
     }
 
-    modifier authorized(uint256 _budget) {
+    function _canApprove(address sender, uint256 _budget)
+        internal
+        view
+        returns (bool)
+    {
+        return
+            sender == owner() || admins[sender] || approvers[sender] >= _budget;
+    }
+
+    modifier authorized(uint256 requestId) {
+        require(_nextRequestId >= requestId, "Vault: invalid requestId");
+        require(!executedRequest[requestId], "Vault: request already executed");
+        Request memory request = requests[requestId];
+        uint256 _budget = request.budget;
         address sender = _msgSender();
-        require(
-            sender == owner() || admins[sender] || approvers[sender] >= _budget,
-            "Vault: Unauthorized"
-        );
+        require(_canApprove(sender, _budget), "Vault: Unauthorized");
         _;
     }
 
@@ -64,38 +74,33 @@ contract Vault is IVault, Ownable {
         _nextRequestId += 1;
     }
 
-    function approveRequest(uint256 executeId) external payable {}
-
-    // function transfer(
-    //     address payable to,
-    //     uint256 amount,
-    //     uint256 _budget
-    // ) external payable override authorized(_budget) {
-    //     require(to.send(amount), "Vault: not enough ether");
-    //     if (
-    //         _msgSender() != owner() &&
-    //         !admins[_msgSender()] &&
-    //         approvers[_msgSender()] > 0
-    //     ) {
-    //         approvers[_msgSender()] -= _budget;
-    //     }
-    //     emit TransferEther(_msgSender(), to, amount);
-    // }
-
-    // function execute(
-    //     address to,
-    //     uint256 value,
-    //     bytes memory data,
-    //     uint256 _budget
-    // )
-    //     external
-    //     payable
-    //     override
-    //     authorized(_budget)
-    //     returns (bytes memory result)
-    // {
-    //     result = to.functionCallWithValue(data, value);
-    // }
+    function approveRequest(uint256 requestId)
+        external
+        payable
+        override
+        authorized(requestId)
+        returns (bool isSuccess, bytes memory result)
+    {
+        Request memory request = requests[requestId];
+        if (request.requestType == RequestType.TRANSFER) {
+            address payable to = payable(request.to);
+            require(to.send(request.value), "Vault: not enough ether");
+            isSuccess = true;
+            result = bytes("");
+        } else {
+            result = request.to.functionCallWithValue(
+                request.data,
+                request.value
+            );
+        }
+        if (
+            _msgSender() != owner() &&
+            !admins[_msgSender()] &&
+            approvers[_msgSender()] > 0
+        ) {
+            approvers[_msgSender()] -= request.budget;
+        }
+    }
 
     function addAdmin(address _admin) external onlyOwner {
         admins[_admin] = true;
@@ -153,5 +158,17 @@ contract Vault is IVault, Ownable {
 
     function nextRequestId() external view returns (uint256) {
         return _nextRequestId;
+    }
+
+    function isExecuted(uint256 requestId) external view returns (bool) {
+        return executedRequest[requestId];
+    }
+
+    function canApprove(address approver, uint256 _budget)
+        external
+        view
+        returns (bool)
+    {
+        return _canApprove(approver, _budget);
     }
 }

@@ -53,7 +53,10 @@ interface IVault {
         bytes memory data
     ) external returns (uint256 requestId);
 
-    function approveRequest(uint256 executeId) external payable;
+    function approveRequest(uint256 requestId)
+        external
+        payable
+        returns (bool isSuccess, bytes memory result);
 
     function addAdmin(address _admin) external;
 
@@ -76,4 +79,11 @@ interface IVault {
         returns (Request memory);
 
     function nextRequestId() external view returns (uint256);
+
+    function isExecuted(uint256 requestId) external view returns (bool);
+
+    function canApprove(address approver, uint256 budget)
+        external
+        view
+        returns (bool);
 }

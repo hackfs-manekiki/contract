@@ -112,12 +112,47 @@ contract VaultTest is Test {
             1000000000,
             ""
         );
+        assertEq(requestId, 0);
         IVault.Request memory request = vault.getRequest(0);
         assertEq(request.requester, recipientAddress);
         assertEq(request.to, recipientAddress);
         assertEq(request.value, 1 ether);
         assertEq(request.budget, 1000_000000);
         assertEq(request.data, "");
+    }
+
+    function testCanApprove() public {
+        assertTrue(vault.canApprove(ownerAddress, 0));
+        assertTrue(vault.canApprove(admin1Address, 1));
+        assertTrue(vault.canApprove(admin2Address, 10000000000));
+        assertTrue(vault.canApprove(approver1Address, 1000_000000));
+        assertFalse(vault.canApprove(approver2Address, 1000_000000));
+    }
+
+    function testApproveTransfer() public {
+        // request with invalid request id
+        vm.expectRevert("Vault: invalid requestId");
+        vm.prank(ownerAddress);
+        vault.approveRequest(1);
+        // add request
+        vm.prank(recipientAddress);
+        uint256 requestId = vault.requestApproval(
+            IVault.RequestType.TRANSFER,
+            recipientAddress,
+            1 ether,
+            1000_000000,
+            ""
+        );
+        // unauthorized
+        vm.prank(recipientAddress);
+        vm.expectRevert("Vault: Unauthorized");
+        vault.approveRequest(requestId);
+        // approver approve
+        vm.prank(approver1Address);
+        vault.approveRequest(requestId);
+        address payable recipient = payable(recipientAddress);
+        assertEq(recipient.balance, 1 ether);
+        assertEq(vault.budget(approver1Address), 0);
     }
 
     // function testTransfer() public {
