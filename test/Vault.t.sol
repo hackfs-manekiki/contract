@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
+import "../src/IVault.sol";
 import "../src/Vault.sol";
 import "../src/MockNft.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
@@ -64,8 +65,8 @@ contract VaultTest is Test {
         admins[1] = admin2Address;
 
         Vault.Approver[] memory approvers = new Vault.Approver[](2);
-        approvers[0] = Vault.Approver(approver1Address, 1000_000000);
-        approvers[1] = Vault.Approver(approver2Address, 100_000000);
+        approvers[0] = IVault.Approver(approver1Address, 1000_000000);
+        approvers[1] = IVault.Approver(approver2Address, 100_000000);
 
         vault = new Vault(ownerAddress, admins, approvers);
         vaultAddress = address(vault);
@@ -78,10 +79,10 @@ contract VaultTest is Test {
 
     function testInitialize() public {
         assertEq(vault.owner(), ownerAddress);
-        assertTrue(vault.admins(admin1Address));
-        assertTrue(vault.admins(admin2Address));
-        assertEq(vault.approvers(approver1Address), 1000_000000);
-        assertEq(vault.approvers(approver2Address), 100_000000);
+        assertTrue(vault.isAdmin(admin1Address));
+        assertTrue(vault.isAdmin(admin2Address));
+        assertEq(vault.budget(approver1Address), 1000_000000);
+        assertEq(vault.budget(approver2Address), 100_000000);
     }
 
     function testManageAdmin() public {
@@ -90,35 +91,53 @@ contract VaultTest is Test {
         // remove admin
         emit RemoveAdmin(admin1Address);
         vault.removeAdmin(admin1Address);
-        assertFalse(vault.admins(admin1Address));
-        assertTrue(vault.admins(admin2Address));
+        assertFalse(vault.isAdmin(admin1Address));
+        assertTrue(vault.isAdmin(admin2Address));
         // add admin
         emit AddAdmin(admin1Address);
         vault.addAdmin(admin1Address);
-        assertTrue(vault.admins(admin1Address));
-        assertTrue(vault.admins(admin2Address));
+        assertTrue(vault.isAdmin(admin1Address));
+        assertTrue(vault.isAdmin(admin2Address));
         // stop impersonate
         vm.stopPrank();
     }
 
-    function testTransfer() public {
-        vm.prank(ownerAddress);
+    function testRequestApproval() public {
+        vm.prank(recipientAddress);
         // assume that 1 eth = 1000 usd
-        // owner transfer
-        vault.transfer(recipientAddress, 1 ether, 0);
-        assertEq(recipientAddress.balance, 1 ether);
-        // admin transfer
-        vm.prank(admin1Address);
-        vault.transfer(recipientAddress, 1 ether, 1000_000000);
-        assertEq(recipientAddress.balance, 2 ether);
-        // approver transfer
-        vm.prank(approver1Address);
-        vault.transfer(recipientAddress, 1 ether, 1000_000000);
-        assertEq(recipientAddress.balance, 3 ether);
-        assertEq(vault.approvers(approver1Address), 0);
-        // approver2 transfer
-        vm.expectRevert("Vault: Unauthorized");
-        vm.prank(approver2Address);
-        vault.transfer(recipientAddress, 1 ether, 1000_000000);
+        uint256 requestId = vault.requestApproval(
+            IVault.RequestType.TRANSFER,
+            recipientAddress,
+            1 ether,
+            1000000000,
+            ""
+        );
+        IVault.Request memory request = vault.getRequest(0);
+        assertEq(request.requester, recipientAddress);
+        assertEq(request.to, recipientAddress);
+        assertEq(request.value, 1 ether);
+        assertEq(request.budget, 1000_000000);
+        assertEq(request.data, "");
     }
+
+    // function testTransfer() public {
+    //     vm.prank(ownerAddress);
+    //     // assume that 1 eth = 1000 usd
+    //     // owner transfer
+    //     vault.transfer(recipientAddress, 1 ether, 0);
+    //     assertEq(recipientAddress.balance, 1 ether);
+    //     // admin transfer
+    //     vm.prank(admin1Address);
+    //     vault.transfer(recipientAddress, 1 ether, 1000_000000);
+    //     assertEq(recipientAddress.balance, 2 ether);
+    //     // approver transfer
+    //     vm.prank(approver1Address);
+    //     vault.transfer(recipientAddress, 1 ether, 1000_000000);
+    //     assertEq(recipientAddress.balance, 3 ether);
+    //     assertEq(vault.budget(approver1Address), 0);
+    //     // approver2 transfer
+    //     vm.expectRevert("Vault: Unauthorized");
+    //     vm.prank(approver2Address);
+    //     vault.transfer(recipientAddress, 1 ether, 1000_000000);
+    // }
 }
