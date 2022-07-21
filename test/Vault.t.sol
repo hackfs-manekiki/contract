@@ -78,7 +78,7 @@ contract VaultTest is Test {
         approvers[0] = IVault.Approver(approver1Address, 1000_000000);
         approvers[1] = IVault.Approver(approver2Address, 100_000000);
 
-        vault = new Vault(ownerAddress, admins, approvers);
+        vault = new Vault("test", ownerAddress, admins, approvers);
         vaultAddress = address(vault);
 
         token = new MockToken("usd", "USD", 6);

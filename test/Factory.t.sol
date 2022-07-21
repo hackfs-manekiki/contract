@@ -54,7 +54,11 @@ contract VaultTest is Test {
         approvers[0] = IVault.Approver(approver1Address, 1000_000000);
         approvers[1] = IVault.Approver(approver2Address, 100_000000);
 
-        Factory.VaultParam memory param = Factory.VaultParam(admins, approvers);
+        Factory.VaultParam memory param = Factory.VaultParam(
+            "test",
+            admins,
+            approvers
+        );
         factory = new Factory();
         vm.prank(ownerAddress);
         address vaultAddress = factory.createVault(param);

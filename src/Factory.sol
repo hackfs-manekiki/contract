@@ -10,6 +10,7 @@ contract Factory is Ownable {
     using Address for address;
 
     struct VaultParam {
+        string name;
         address[] admins;
         IVault.Approver[] approvers;
     }
@@ -40,7 +41,12 @@ contract Factory is Ownable {
         internal
         returns (address vaultAddress)
     {
-        Vault vault = new Vault(_msgSender(), param.admins, param.approvers);
+        Vault vault = new Vault(
+            param.name,
+            _msgSender(),
+            param.admins,
+            param.approvers
+        );
         vaultAddress = address(vault);
         emit VaultSetup(vaultAddress, _msgSender());
     }

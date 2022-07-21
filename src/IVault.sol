@@ -73,6 +73,8 @@ interface IVault {
     function removeApprover(address _approver) external;
 
     // getter
+    function getName() external view returns (string memory);
+
     function getOwner() external view returns (address);
 
     function isAdmin(address _admin) external view returns (bool);

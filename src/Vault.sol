@@ -14,13 +14,16 @@ contract Vault is IVault, Ownable {
     mapping(uint256 => Request) requests;
     mapping(uint256 => bool) executedRequest;
     uint256 internal _nextRequestId;
+    string internal _name;
 
     constructor(
+        string memory name,
         address _owner,
         address[] memory _admins,
         Approver[] memory _approvers
     ) {
         _transferOwnership(_owner);
+        _name = name;
         _nextRequestId = 0;
         for (uint256 i = 0; i < _admins.length; i++) {
             admins[_admins[i]] = true;
@@ -177,5 +180,9 @@ contract Vault is IVault, Ownable {
         returns (bool)
     {
         return _canApprove(approver, _budget);
+    }
+
+    function getName() external view returns (string memory) {
+        return _name;
     }
 }
