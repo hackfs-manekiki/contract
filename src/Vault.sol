@@ -82,17 +82,6 @@ contract Vault is IVault, Ownable {
         returns (bool isSuccess, bytes memory result)
     {
         Request memory request = requests[requestId];
-        if (request.requestType == RequestType.TRANSFER) {
-            address payable to = payable(request.to);
-            require(to.send(request.value), "Vault: not enough ether");
-            isSuccess = true;
-            result = bytes("");
-        } else {
-            result = request.to.functionCallWithValue(
-                request.data,
-                request.value
-            );
-        }
         if (
             _msgSender() != owner() &&
             !admins[_msgSender()] &&
@@ -107,6 +96,17 @@ contract Vault is IVault, Ownable {
             request.value,
             request.budget
         );
+        if (request.requestType == RequestType.TRANSFER) {
+            address payable to = payable(request.to);
+            require(to.send(request.value), "Vault: not enough ether");
+            isSuccess = true;
+            result = bytes("");
+        } else {
+            result = request.to.functionCallWithValue(
+                request.data,
+                request.value
+            );
+        }
     }
 
     function addAdmin(address _admin) external onlyOwner {
