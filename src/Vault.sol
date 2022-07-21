@@ -100,6 +100,13 @@ contract Vault is IVault, Ownable {
         ) {
             approvers[_msgSender()] -= request.budget;
         }
+        executedRequest[requestId] = true;
+        emit ApprovalExecute(
+            requestId,
+            _msgSender(),
+            request.value,
+            request.budget
+        );
     }
 
     function addAdmin(address _admin) external onlyOwner {

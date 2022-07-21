@@ -37,6 +37,12 @@ interface IVault {
         uint256 value,
         uint256 budget
     );
+    event ApprovalExecute(
+        uint256 requestId,
+        address indexed executor,
+        uint256 value,
+        uint256 budget
+    );
     // ether
     event ReceivedEther(address indexed sender, uint256 amount);
     event TransferEther(

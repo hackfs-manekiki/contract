@@ -4,18 +4,29 @@ pragma solidity ^0.8.0;
 import "forge-std/Test.sol";
 import "../src/IVault.sol";
 import "../src/Vault.sol";
-import "../src/MockNft.sol";
+import "../src/MockToken.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract VaultTest is Test {
-    // event
-    event VaultSetup(address indexed owner);
     // admin
     event AddAdmin(address indexed admin);
     event RemoveAdmin(address indexed admin);
     // approver
     event AddApprover(address indexed approver, uint256 budget);
     event RemoveApprover(address indexed approver);
+    // request
+    event RequestApproval(
+        uint256 requestId,
+        address indexed requester,
+        uint256 value,
+        uint256 budget
+    );
+    event ApprovalExecute(
+        uint256 requestId,
+        address indexed executor,
+        uint256 value,
+        uint256 budget
+    );
     // ether
     event ReceivedEther(address indexed sender, uint256 amount);
     event TransferEther(
@@ -25,7 +36,7 @@ contract VaultTest is Test {
     );
 
     Vault vault;
-    MockNFT nft;
+    MockToken token;
 
     uint256 private ownerPrivateKey;
     uint256 private admin1PrivateKey;
@@ -42,7 +53,6 @@ contract VaultTest is Test {
     address payable internal recipientAddress;
 
     address internal vaultAddress;
-    address internal nftAddress;
     address internal tokenAddress;
 
     function setUp() public {
@@ -71,8 +81,8 @@ contract VaultTest is Test {
         vault = new Vault(ownerAddress, admins, approvers);
         vaultAddress = address(vault);
 
-        nft = new MockNFT("mock", "MOCK", vaultAddress);
-        nftAddress = address(nft);
+        token = new MockToken("usd", "USD", 6);
+        tokenAddress = address(token);
 
         vm.deal(address(vault), 5 ether);
     }
@@ -104,12 +114,14 @@ contract VaultTest is Test {
 
     function testRequestApproval() public {
         vm.prank(recipientAddress);
+        vm.expectEmit(true, true, true, false);
+        emit RequestApproval(0, recipientAddress, 1 ether, 1000_000000);
         // assume that 1 eth = 1000 usd
         uint256 requestId = vault.requestApproval(
             IVault.RequestType.TRANSFER,
             recipientAddress,
             1 ether,
-            1000000000,
+            1000_000000,
             ""
         );
         assertEq(requestId, 0);
@@ -149,30 +161,66 @@ contract VaultTest is Test {
         vault.approveRequest(requestId);
         // approver approve
         vm.prank(approver1Address);
+        vm.expectEmit(true, true, true, false);
+        emit ApprovalExecute(0, approver1Address, 1 ether, 1000_000000);
         vault.approveRequest(requestId);
         address payable recipient = payable(recipientAddress);
         assertEq(recipient.balance, 1 ether);
         assertEq(vault.budget(approver1Address), 0);
+        assertEq(vault.isExecuted(requestId), true);
+        assertFalse(vault.canApprove(approver1Address, 1000_0000));
+        // approver cannot approve
+        vm.prank(recipientAddress);
+        uint256 requestId2 = vault.requestApproval(
+            IVault.RequestType.TRANSFER,
+            recipientAddress,
+            100 ether,
+            100000_000000,
+            ""
+        );
+        vm.prank(approver2Address);
+        vm.expectRevert("Vault: Unauthorized");
+        vault.approveRequest(requestId2);
+        // approve executed request
+        vm.prank(admin1Address);
+        vm.expectRevert("Vault: request already executed");
+        vault.approveRequest(requestId);
+        // vault has not enough ether
+        vm.prank(admin1Address);
+        vm.expectRevert("Vault: not enough ether");
+        vault.approveRequest(requestId2);
+        // success
+        vm.deal(address(vault), 2000 ether);
+        vm.deal(recipientAddress, 0 ether);
+        vm.prank(admin1Address);
+        vm.expectEmit(true, true, true, false);
+        emit ApprovalExecute(0, admin1Address, 1000 ether, 100000_000000);
+        vault.approveRequest(requestId2);
+        assertEq(recipient.balance, 100 ether);
+        assertEq(vault.isExecuted(requestId2), true);
+        assertTrue(vault.canApprove(admin1Address, 1000_0000));
     }
 
-    // function testTransfer() public {
-    //     vm.prank(ownerAddress);
-    //     // assume that 1 eth = 1000 usd
-    //     // owner transfer
-    //     vault.transfer(recipientAddress, 1 ether, 0);
-    //     assertEq(recipientAddress.balance, 1 ether);
-    //     // admin transfer
-    //     vm.prank(admin1Address);
-    //     vault.transfer(recipientAddress, 1 ether, 1000_000000);
-    //     assertEq(recipientAddress.balance, 2 ether);
-    //     // approver transfer
-    //     vm.prank(approver1Address);
-    //     vault.transfer(recipientAddress, 1 ether, 1000_000000);
-    //     assertEq(recipientAddress.balance, 3 ether);
-    //     assertEq(vault.budget(approver1Address), 0);
-    //     // approver2 transfer
-    //     vm.expectRevert("Vault: Unauthorized");
-    //     vm.prank(approver2Address);
-    //     vault.transfer(recipientAddress, 1 ether, 1000_000000);
-    // }
+    function testApproveTransferToken() public {
+        vm.prank(recipientAddress);
+        uint256 requestId = vault.requestApproval(
+            IVault.RequestType.EXECUTE,
+            tokenAddress,
+            0,
+            1000_000000,
+            abi.encodeWithSignature(
+                "transfer(address,uint256)",
+                recipientAddress,
+                1000_000000
+            )
+        );
+        token.mint(vaultAddress, 1000_000000);
+        // approve
+        vm.prank(approver1Address);
+        vault.approveRequest(requestId);
+        assertEq(token.balanceOf(recipientAddress), 1000_000000);
+        assertEq(vault.budget(approver1Address), 0);
+        assertEq(vault.isExecuted(requestId), true);
+        assertFalse(vault.canApprove(approver1Address, 1000_0000));
+    }
 }
