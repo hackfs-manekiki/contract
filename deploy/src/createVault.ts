@@ -9,6 +9,7 @@ async function main() {
     const wallet = new ethers.Wallet(privateKey, provider)
     const vaultFactory = new ethers.Contract(factoryAddress, FactoryArtifact.abi, wallet)
     const param = {
+        name: 'test',
         admins: ['0x70997970c51812dc3a010c7d01b50e0d17dc79c8', '0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc'],
         approvers: [
             {

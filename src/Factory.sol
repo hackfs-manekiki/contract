@@ -16,7 +16,7 @@ contract Factory is Ownable {
     }
 
     // event
-    event VaultSetup(address indexed vault, address indexed owner);
+    event VaultSetup(address indexed vault, string name, address indexed owner);
 
     constructor() {}
 
@@ -48,7 +48,7 @@ contract Factory is Ownable {
             param.approvers
         );
         vaultAddress = address(vault);
-        emit VaultSetup(vaultAddress, _msgSender());
+        emit VaultSetup(vaultAddress, param.name, _msgSender());
     }
 
     fallback() external payable {
