@@ -9,11 +9,18 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract VaultTest is Test {
     // admin
-    event AddAdmin(address indexed admin);
+    event AddAdmin(address indexed admin, string name);
     event RemoveAdmin(address indexed admin);
     // approver
-    event AddApprover(address indexed approver, uint256 budget);
+    event AddApprover(
+        address indexed approver,
+        string _approverName,
+        uint256 budget
+    );
     event RemoveApprover(address indexed approver);
+    // member
+    event AddMember(address indexed member, string name);
+    event RemoveMember(address indexed member);
     // request
     event RequestApproval(
         uint256 requestId,
@@ -70,15 +77,33 @@ contract VaultTest is Test {
         approver2Address = vm.addr(approver2PrivateKey);
         recipientAddress = payable(vm.addr(recipientPrivateKey));
 
-        address[] memory admins = new address[](2);
-        admins[0] = admin1Address;
-        admins[1] = admin2Address;
+        IVault.Member[] memory admins = new IVault.Member[](2);
+        admins[0] = IVault.Member(admin1Address, "admin1");
+        admins[1] = IVault.Member(admin2Address, "admin2");
 
         Vault.Approver[] memory approvers = new Vault.Approver[](2);
-        approvers[0] = IVault.Approver(approver1Address, 1000_000000);
-        approvers[1] = IVault.Approver(approver2Address, 100_000000);
+        approvers[0] = IVault.Approver(
+            approver1Address,
+            "approver1",
+            1000_000000
+        );
+        approvers[1] = IVault.Approver(
+            approver2Address,
+            "approver2",
+            100_000000
+        );
 
-        vault = new Vault("test", ownerAddress, admins, approvers);
+        IVault.Member[] memory members = new IVault.Member[](1);
+        members[0] = IVault.Member(recipientAddress, "member1");
+
+        IVault.VaultParam memory param = IVault.VaultParam(
+            "test",
+            admins,
+            approvers,
+            members
+        );
+
+        vault = new Vault(ownerAddress, param);
         vaultAddress = address(vault);
 
         token = new MockToken("usd", "USD", 6);
@@ -104,8 +129,8 @@ contract VaultTest is Test {
         assertFalse(vault.isAdmin(admin1Address));
         assertTrue(vault.isAdmin(admin2Address));
         // add admin
-        emit AddAdmin(admin1Address);
-        vault.addAdmin(admin1Address);
+        emit AddAdmin(admin1Address, "admin1");
+        vault.addAdmin(admin1Address, "admin1");
         assertTrue(vault.isAdmin(admin1Address));
         assertTrue(vault.isAdmin(admin2Address));
         // stop impersonate

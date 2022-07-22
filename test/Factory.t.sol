@@ -46,18 +46,30 @@ contract VaultTest is Test {
     }
 
     function testCreateVault() public {
-        address[] memory admins = new address[](2);
-        admins[0] = admin1Address;
-        admins[1] = admin2Address;
+        IVault.Member[] memory admins = new IVault.Member[](2);
+        admins[0] = IVault.Member(admin1Address, "admin1");
+        admins[1] = IVault.Member(admin2Address, "admin2");
 
-        Vault.Approver[] memory approvers = new Vault.Approver[](2);
-        approvers[0] = IVault.Approver(approver1Address, 1000_000000);
-        approvers[1] = IVault.Approver(approver2Address, 100_000000);
+        IVault.Approver[] memory approvers = new IVault.Approver[](2);
+        approvers[0] = IVault.Approver(
+            approver1Address,
+            "approver1",
+            1000_000000
+        );
+        approvers[1] = IVault.Approver(
+            approver2Address,
+            "approver2",
+            100_000000
+        );
 
-        Factory.VaultParam memory param = Factory.VaultParam(
+        IVault.Member[] memory members = new IVault.Member[](1);
+        members[0] = IVault.Member(recipientAddress, "member1");
+
+        IVault.VaultParam memory param = IVault.VaultParam(
             "test",
             admins,
-            approvers
+            approvers,
+            members
         );
         factory = new Factory();
         vm.prank(ownerAddress);

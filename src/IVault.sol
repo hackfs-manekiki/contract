@@ -10,9 +10,22 @@ interface IVault {
         EXECUTE
     }
 
+    struct VaultParam {
+        string name;
+        IVault.Member[] admins;
+        IVault.Approver[] approvers;
+        IVault.Member[] members;
+    }
+
     struct Approver {
         address approver;
+        string name;
         uint256 budget;
+    }
+
+    struct Member {
+        address member;
+        string name;
     }
 
     struct Request {
@@ -25,11 +38,18 @@ interface IVault {
     }
 
     // admin
-    event AddAdmin(address indexed admin);
+    event AddAdmin(address indexed admin, string name);
     event RemoveAdmin(address indexed admin);
     // approver
-    event AddApprover(address indexed approver, uint256 budget);
+    event AddApprover(
+        address indexed approver,
+        string _approverName,
+        uint256 budget
+    );
     event RemoveApprover(address indexed approver);
+    // member
+    event AddMember(address indexed member, string name);
+    event RemoveMember(address indexed member);
     // request
     event RequestApproval(
         uint256 requestId,
@@ -64,11 +84,15 @@ interface IVault {
         payable
         returns (bool isSuccess, bytes memory result);
 
-    function addAdmin(address _admin) external;
+    function addAdmin(address _admin, string memory _adminName) external;
 
     function removeAdmin(address _admin) external;
 
-    function addApprover(address _approver, uint256 _budget) external;
+    function addApprover(
+        address _approver,
+        string memory _approverName,
+        uint256 _budget
+    ) external;
 
     function removeApprover(address _approver) external;
 

@@ -9,25 +9,19 @@ import "./IVault.sol";
 contract Factory is Ownable {
     using Address for address;
 
-    struct VaultParam {
-        string name;
-        address[] admins;
-        IVault.Approver[] approvers;
-    }
-
     // event
     event VaultSetup(address indexed vault, string name, address indexed owner);
 
     constructor() {}
 
-    function createVault(VaultParam calldata param)
+    function createVault(IVault.VaultParam calldata param)
         external
         returns (address vaultAddress)
     {
         vaultAddress = _createVault(param);
     }
 
-    function batchCreateVault(VaultParam[] calldata params)
+    function batchCreateVault(IVault.VaultParam[] calldata params)
         external
         returns (address[] memory vaultAddresses)
     {
@@ -37,16 +31,11 @@ contract Factory is Ownable {
         }
     }
 
-    function _createVault(VaultParam memory param)
+    function _createVault(IVault.VaultParam memory param)
         internal
         returns (address vaultAddress)
     {
-        Vault vault = new Vault(
-            param.name,
-            _msgSender(),
-            param.admins,
-            param.approvers
-        );
+        Vault vault = new Vault(_msgSender(), param);
         vaultAddress = address(vault);
         emit VaultSetup(vaultAddress, param.name, _msgSender());
     }

@@ -9,29 +9,34 @@ contract Vault is IVault, Ownable {
     using Address for address;
 
     // global var
-    mapping(address => uint256) approvers;
-    mapping(address => bool) admins;
+    mapping(address => Approver) approvers;
+    mapping(address => string) admins;
+    mapping(address => string) members;
     mapping(uint256 => Request) requests;
     mapping(uint256 => bool) executedRequest;
     uint256 internal _nextRequestId;
     string internal _name;
 
-    constructor(
-        string memory name,
-        address _owner,
-        address[] memory _admins,
-        Approver[] memory _approvers
-    ) {
+    constructor(address _owner, VaultParam memory param) {
         _transferOwnership(_owner);
-        _name = name;
+        _name = param.name;
         _nextRequestId = 0;
-        for (uint256 i = 0; i < _admins.length; i++) {
-            admins[_admins[i]] = true;
-            emit AddAdmin(_admins[i]);
+
+        for (uint256 i = 0; i < param.admins.length; i++) {
+            admins[param.admins[i].member] = param.admins[i].name;
+            emit AddAdmin(param.admins[i].member, param.admins[i].name);
         }
-        for (uint256 i = 0; i < _approvers.length; i++) {
-            approvers[_approvers[i].approver] = _approvers[i].budget;
-            emit AddApprover(_approvers[i].approver, _approvers[i].budget);
+        for (uint256 i = 0; i < param.approvers.length; i++) {
+            approvers[param.approvers[i].approver] = param.approvers[i];
+            emit AddApprover(
+                param.approvers[i].approver,
+                param.approvers[i].name,
+                param.approvers[i].budget
+            );
+        }
+        for (uint256 i = 0; i < param.members.length; i++) {
+            members[param.members[i].member] = param.members[i].name;
+            emit AddMember(param.members[i].member, param.members[i].name);
         }
     }
 
@@ -40,8 +45,19 @@ contract Vault is IVault, Ownable {
         view
         returns (bool)
     {
+        bool isOwner = sender == owner();
         return
-            sender == owner() || admins[sender] || approvers[sender] >= _budget;
+            isOwner || _isAdmin(sender) || approvers[sender].budget >= _budget;
+    }
+
+    function _isMember(address sender) internal view returns (bool) {
+        bytes memory name = bytes(members[sender]);
+        return name.length != 0;
+    }
+
+    function _isAdmin(address sender) internal view returns (bool) {
+        bytes memory name = bytes(admins[sender]);
+        return name.length != 0;
     }
 
     modifier authorized(uint256 requestId) {
@@ -54,13 +70,22 @@ contract Vault is IVault, Ownable {
         _;
     }
 
+    modifier onlyMember() {
+        address sender = _msgSender();
+        require(
+            _isMember(sender) || _canApprove(sender, 1),
+            "Vault: not a member"
+        );
+        _;
+    }
+
     function requestApproval(
         RequestType requestType,
         address to,
         uint256 value,
         uint256 _budget,
         bytes memory data
-    ) external returns (uint256 requestId) {
+    ) external onlyMember returns (uint256 requestId) {
         // save to request
         Request memory request = Request(
             _msgSender(),
@@ -85,12 +110,13 @@ contract Vault is IVault, Ownable {
         returns (bool isSuccess, bytes memory result)
     {
         Request memory request = requests[requestId];
+
         if (
             _msgSender() != owner() &&
-            !admins[_msgSender()] &&
-            approvers[_msgSender()] > 0
+            !_isAdmin(_msgSender()) &&
+            approvers[_msgSender()].budget > 0
         ) {
-            approvers[_msgSender()] -= request.budget;
+            approvers[_msgSender()].budget -= request.budget;
         }
         executedRequest[requestId] = true;
         emit ApprovalExecute(
@@ -112,26 +138,30 @@ contract Vault is IVault, Ownable {
         }
     }
 
-    function addAdmin(address _admin) external onlyOwner {
-        admins[_admin] = true;
-        emit AddAdmin(_admin);
-    }
-
-    function removeAdmin(address _admin) external onlyOwner {
-        admins[_admin] = false;
-        emit RemoveAdmin(_admin);
-    }
-
-    function addApprover(address _approver, uint256 _budget)
+    function addAdmin(address _admin, string memory _adminName)
         external
         onlyOwner
     {
-        approvers[_approver] = _budget;
-        emit AddApprover(_approver, _budget);
+        admins[_admin] = _adminName;
+        emit AddAdmin(_admin, _adminName);
+    }
+
+    function removeAdmin(address _admin) external onlyOwner {
+        delete admins[_admin];
+        emit RemoveAdmin(_admin);
+    }
+
+    function addApprover(
+        address _approver,
+        string memory _approverName,
+        uint256 _budget
+    ) external onlyOwner {
+        approvers[_approver] = Approver(_approver, _approverName, _budget);
+        emit AddApprover(_approver, _approverName, _budget);
     }
 
     function removeApprover(address _approver) external onlyOwner {
-        approvers[_approver] = 0;
+        delete approvers[_approver];
         emit RemoveApprover(_approver);
     }
 
@@ -151,11 +181,11 @@ contract Vault is IVault, Ownable {
     }
 
     function isAdmin(address _admin) external view returns (bool) {
-        return admins[_admin];
+        return _isAdmin(_admin);
     }
 
     function budget(address _approver) external view returns (uint256) {
-        return approvers[_approver];
+        return approvers[_approver].budget;
     }
 
     function getRequest(uint256 requestId)
