@@ -10,13 +10,24 @@ async function main() {
     const vaultFactory = new ethers.Contract(factoryAddress, FactoryArtifact.abi, wallet)
     const param = {
         name: 'test',
-        admins: ['0x70997970c51812dc3a010c7d01b50e0d17dc79c8', '0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc'],
+        admins: [{
+            member: '0x70997970c51812dc3a010c7d01b50e0d17dc79c8',
+            name: 'admin1'
+        }, {
+            member: '0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc',
+            name: 'admin2'
+        }],
         approvers: [
             {
                 approver: '0x90f79bf6eb2c4f870365e785982e1f101e93b906',
-                budget: '1000000000'
+                budget: '1000000000',
+                name: 'approver1'
             }
-        ]
+        ],
+        members: [{
+            member: '0xa0ee7a142d267c1f36714e4a8f75612f20a79720',
+            name: 'member1'
+        }]
     }
     await vaultFactory.createVault(param)
 }
