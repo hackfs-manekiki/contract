@@ -79,26 +79,22 @@ contract Vault is IVault, Ownable {
         _;
     }
 
-    function requestApproval(
-        RequestType requestType,
-        address to,
-        uint256 value,
-        uint256 _budget,
-        bytes memory data
-    ) external onlyMember returns (uint256 requestId) {
+    function requestApproval(Request memory request)
+        external
+        onlyMember
+        returns (uint256 requestId)
+    {
+        require(request.requester == _msgSender(), "Vault: invalid requester");
         // save to request
-        Request memory request = Request(
-            _msgSender(),
-            to,
-            requestType,
-            value,
-            _budget,
-            data
-        );
         requestId = _nextRequestId;
         requests[requestId] = request;
         executedRequest[requestId] = false;
-        emit RequestApproval(requestId, _msgSender(), value, _budget);
+        emit RequestApproval(
+            requestId,
+            _msgSender(),
+            request.value,
+            request.budget
+        );
         _nextRequestId += 1;
     }
 

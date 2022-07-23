@@ -35,6 +35,9 @@ interface IVault {
         uint256 value;
         uint256 budget;
         bytes data;
+        string name;
+        string detail;
+        string attachments;
     }
 
     // admin
@@ -71,13 +74,9 @@ interface IVault {
         uint256 amount
     );
 
-    function requestApproval(
-        RequestType requestType,
-        address to,
-        uint256 value,
-        uint256 budget,
-        bytes memory data
-    ) external returns (uint256 requestId);
+    function requestApproval(Request memory request)
+        external
+        returns (uint256 requestId);
 
     function approveRequest(uint256 requestId)
         external

@@ -141,21 +141,26 @@ contract VaultTest is Test {
         vm.prank(recipientAddress);
         vm.expectEmit(true, true, true, false);
         emit RequestApproval(0, recipientAddress, 1 ether, 1000_000000);
-        // assume that 1 eth = 1000 usd
-        uint256 requestId = vault.requestApproval(
-            IVault.RequestType.TRANSFER,
+        IVault.Request memory request = IVault.Request(
             recipientAddress,
+            recipientAddress,
+            IVault.RequestType.TRANSFER,
             1 ether,
             1000_000000,
-            ""
+            "",
+            "test transfer ether",
+            "hello world",
+            "ipfs://test"
         );
+        // assume that 1 eth = 1000 usd
+        uint256 requestId = vault.requestApproval(request);
         assertEq(requestId, 0);
-        IVault.Request memory request = vault.getRequest(0);
-        assertEq(request.requester, recipientAddress);
-        assertEq(request.to, recipientAddress);
-        assertEq(request.value, 1 ether);
-        assertEq(request.budget, 1000_000000);
-        assertEq(request.data, "");
+        IVault.Request memory requestOutput = vault.getRequest(0);
+        assertEq(requestOutput.requester, recipientAddress);
+        assertEq(requestOutput.to, recipientAddress);
+        assertEq(requestOutput.value, 1 ether);
+        assertEq(requestOutput.budget, 1000_000000);
+        assertEq(requestOutput.data, "");
     }
 
     function testCanApprove() public {
@@ -173,13 +178,18 @@ contract VaultTest is Test {
         vault.approveRequest(1);
         // add request
         vm.prank(recipientAddress);
-        uint256 requestId = vault.requestApproval(
-            IVault.RequestType.TRANSFER,
+        IVault.Request memory request = IVault.Request(
             recipientAddress,
+            recipientAddress,
+            IVault.RequestType.TRANSFER,
             1 ether,
             1000_000000,
-            ""
+            "",
+            "test transfer ether",
+            "hello world",
+            "ipfs://test"
         );
+        uint256 requestId = vault.requestApproval(request);
         // unauthorized
         vm.prank(recipientAddress);
         vm.expectRevert("Vault: Unauthorized");
@@ -196,13 +206,18 @@ contract VaultTest is Test {
         assertFalse(vault.canApprove(approver1Address, 1000_0000));
         // approver cannot approve
         vm.prank(recipientAddress);
-        uint256 requestId2 = vault.requestApproval(
-            IVault.RequestType.TRANSFER,
+        IVault.Request memory request2 = IVault.Request(
             recipientAddress,
+            recipientAddress,
+            IVault.RequestType.TRANSFER,
             100 ether,
             100000_000000,
-            ""
+            "",
+            "test transfer ether",
+            "hello world",
+            "ipfs://test"
         );
+        uint256 requestId2 = vault.requestApproval(request2);
         vm.prank(approver2Address);
         vm.expectRevert("Vault: Unauthorized");
         vault.approveRequest(requestId2);
@@ -228,17 +243,22 @@ contract VaultTest is Test {
 
     function testApproveTransferToken() public {
         vm.prank(recipientAddress);
-        uint256 requestId = vault.requestApproval(
-            IVault.RequestType.EXECUTE,
+        IVault.Request memory request = IVault.Request(
+            recipientAddress,
             tokenAddress,
+            IVault.RequestType.EXECUTE,
             0,
             1000_000000,
             abi.encodeWithSignature(
                 "transfer(address,uint256)",
                 recipientAddress,
                 1000_000000
-            )
+            ),
+            "test transfer token",
+            "hello world",
+            "ipfs://test"
         );
+        uint256 requestId = vault.requestApproval(request);
         token.mint(vaultAddress, 1000_000000);
         // approve
         vm.prank(approver1Address);
